@@ -39,6 +39,13 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 .shopbox h2{font-size:1rem;font-weight:800;margin:0 0 6px}
 .unk{margin-top:8px}
 .unk label{font-size:.9rem;color:var(--mute);display:block}
+.row{grid-template-columns:56px 1fr 74px}
+.kc{text-align:center;padding:7px 4px}
+.day h2{display:flex;justify-content:space-between;align-items:baseline}
+.tot{color:var(--mute);font-weight:600;font-size:.85rem}
+.avg{font-weight:600;font-size:.9rem;color:var(--mute);margin:0 0 8px}
+.chk{display:flex;align-items:center;gap:8px;font-size:.9rem;margin:0 0 6px}
+.chk input{width:20px;height:20px;accent-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -50,14 +57,17 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
   <button class="btn ghost" id="shopBtn">فهرست خرید</button>
   <button class="btn ghost" id="clr">پاک کردن هفته</button>
 </div>
+<label class="chk"><input type="checkbox" id="diet"> پیشنهادها فقط رژیمی و پروتئینی باشد</label>
+<div class="avg" id="avg"></div>
 <section id="shop" hidden></section>
 <div id="week"></div>
 <datalist id="dl"></datalist>
+<datalist id="dls"></datalist>
 <p class="note">هرچه بنویسید خودکار ذخیره می‌شود (فقط روی همین دستگاه). غذاهایی که تایپ می‌کنید به فهرست پیشنهادها اضافه می‌شوند.</p>
 </main>
 <script>
 const DAYS=["شنبه","یک‌شنبه","دوشنبه","سه‌شنبه","چهارشنبه","پنج‌شنبه","جمعه"];
-const MEALS=[["b","صبحانه"],["l","ناهار"],["d","شام"]];
+const MEALS=[["b","صبحانه"],["l","ناهار"],["s","سالاد"],["d","شام"]];
 const STARTER=["قورمه‌سبزی","قیمه","فسنجان","کوکو سبزی","عدس‌پلو","ماکارونی","املت","کشک بادمجان","میرزاقاسمی","آبگوشت","عدسی","آش رشته","سوپ جو","چلوکباب","جوجه‌کباب","زرشک‌پلو با مرغ","لوبیا‌پلو","باقالی‌پلو با مرغ","کتلت","شامی","کوفته","خوراک مرغ و سبزیجات","ته‌چین","دلمه","خورش بادمجان","خورش کرفس","خورش بامیه","تن‌ماهی و سالاد","پیتزا خانگی","همبرگر خانگی","نیمرو","حلیم بادمجان","اشکنه","ماست و خیار","سبزی‌پلو با ماهی","کباب تابه‌ای","مرغ سوخاری","استانبولی‌پلو"];
 const KEY="weekplan-v1";
 let st={plan:{},dishes:[]};
@@ -66,29 +76,104 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
 const todayIdx=(new Date().getDay()+1)%7;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const pool=()=>[...new Set([...STARTER,...st.dishes])];
-function refreshDL(){$("dl").innerHTML=pool().map(d=>`<option value="${esc(d)}">`).join("")}
-function render(){
-  $("week").innerHTML=DAYS.map((n,i)=>`<section class="day ${i===todayIdx?"today":""}"><h2>${n}${i===todayIdx?"<small>امروز</small>":""}</h2>`+
-    MEALS.map(([k,l])=>`<div class="row"><label for="i${i}${k}">${l}</label><input id="i${i}${k}" list="dl" data-d="${i}" data-m="${k}" value="${esc((st.plan[i]||{})[k]||"")}" placeholder="—" autocomplete="off"></div>`).join("")+`</section>`).join("");
-  refreshDL();
+const nz=s=>s.replace(/[\u200c\s]/g,"");
+const BASECAL={"قورمه‌سبزی":600,"قیمه":650,"فسنجان":700,"کوکو سبزی":250,"عدس‌پلو":550,"ماکارونی":600,"املت":250,"کشک بادمجان":250,"میرزاقاسمی":250,"آبگوشت":550,"عدسی":300,"آش رشته":300,"سوپ جو":200,"چلوکباب":800,"جوجه‌کباب":700,"زرشک‌پلو با مرغ":650,"لوبیا‌پلو":600,"باقالی‌پلو با مرغ":650,"کتلت":400,"شامی":350,"کوفته":550,"خوراک مرغ و سبزیجات":350,"ته‌چین":650,"دلمه":400,"خورش بادمجان":550,"خورش کرفس":550,"خورش بامیه":500,"تن‌ماهی و سالاد":350,"پیتزا خانگی":600,"همبرگر خانگی":600,"نیمرو":200,"حلیم بادمجان":300,"اشکنه":250,"ماست و خیار":90,"سبزی‌پلو با ماهی":600,"کباب تابه‌ای":400,"مرغ سوخاری":500,"استانبولی‌پلو":600};
+const DIET=[
+["سینه مرغ گریل با سبزیجات",350,"سینه مرغ,کدو سبز,هویج,فلفل دلمه‌ای,روغن زیتون"],
+["ماهی سالمون کبابی با لیمو",400,"ماهی سالمون,لیمو,سیر,روغن زیتون"],
+["قزل‌آلای تنوری با سبزیجات",380,"ماهی قزل‌آلا,لیمو,سیر,سبزیجات تنوری"],
+["فیله مرغ و قارچ سوته",340,"فیله مرغ,قارچ,سیر,روغن زیتون"],
+["کباب مرغ بدون چربی با گوجه گریل",320,"سینه مرغ,گوجه‌فرنگی,زعفران,ماست"],
+["تن‌ماهی و تخم‌مرغ آب‌پز",330,"تن ماهی,تخم‌مرغ"],
+["املت سفیده با سبزیجات",200,"تخم‌مرغ,گوجه‌فرنگی,فلفل دلمه‌ای,اسفناج"],
+["خوراک عدس و سبزیجات",280,"عدس,هویج,کدو سبز,پیاز"],
+["کوفته مرغ تنوری",300,"سینه مرغ چرخ‌کرده,پیاز,سبزی کوفته,برنج"],
+["میگوی سوته با سیر و سبزیجات",280,"میگو,سیر,فلفل دلمه‌ای,روغن زیتون"],
+["کتلت مرغ و کدو تنوری",300,"سینه مرغ چرخ‌کرده,کدو سبز,پیاز,تخم‌مرغ"],
+["استیک گوساله با سبزیجات",400,"گوشت گوساله,سیر,قارچ,روغن زیتون"],
+["خوراک لوبیا چیتی و مرغ",380,"لوبیا چیتی,سینه مرغ,پیاز,رب گوجه"],
+["مرغ زعفرانی تنوری بدون پوست",330,"سینه مرغ,زعفران,لیمو,پیاز"],
+["ماهی سفید بخارپز با سبزیجات",300,"ماهی سفید,لیمو,سبزیجات بخارپز"]];
+const SALADS=[
+["سالاد شیرازی",60,"خیار,گوجه‌فرنگی,پیاز,آبلیمو"],
+["سالاد کاهو و خیار",40,"کاهو,خیار,لیمو,روغن زیتون"],
+["سالاد یونانی",180,"خیار,گوجه‌فرنگی,زیتون,پنیر فتا,پیاز"],
+["سالاد سزار با مرغ",300,"کاهو,سینه مرغ,پارمزان,نان تست"],
+["سالاد کلم",70,"کلم,هویج,آبلیمو,سرکه"],
+["سالاد فصل",80,"کاهو,خیار,گوجه‌فرنگی,هویج,کلم"],
+["سالاد نخود و ذرت",200,"نخود,ذرت,گوجه‌فرنگی,خیار"],
+["سالاد کینوا",220,"کینوا,خیار,گوجه‌فرنگی,آبلیمو"],
+["سالاد تن‌ماهی",250,"تن ماهی,کاهو,ذرت,گوجه‌فرنگی"],
+["سالاد اسفناج و گردو",180,"اسفناج,گردو,پنیر,انار"]];
+const CALN={},ING2={};
+Object.keys(BASECAL).forEach(k=>CALN[nz(k)]=BASECAL[k]);
+[...DIET,...SALADS].forEach(([n,c,i])=>{CALN[nz(n)]=c;ING2[n]=i});
+st.cal=st.cal||{};st.salads=st.salads||[];if(st.diet===undefined)st.diet=true;
+const calOf=d=>{const v=st.cal[d]??CALN[nz(d)];return v===undefined?null:v};
+const mainPool=()=>[...new Set([...STARTER,...DIET.map(x=>x[0]),...st.dishes])];
+const dietPool=()=>DIET.map(x=>x[0]);
+const saladPool=()=>[...new Set([...SALADS.map(x=>x[0]),...st.salads])];
+const pool=mainPool;
+function refreshDL(){
+  $("dl").innerHTML=mainPool().map(d=>`<option value="${esc(d)}">`).join("");
+  $("dls").innerHTML=saladPool().map(d=>`<option value="${esc(d)}">`).join("");
 }
-$("week").addEventListener("input",e=>{const t=e.target;if(!t.dataset.d)return;(st.plan[t.dataset.d]=st.plan[t.dataset.d]||{})[t.dataset.m]=t.value;save()});
-$("week").addEventListener("change",e=>{const t=e.target,v=t.value.trim();if(t.dataset.d&&v&&!pool().includes(v)){st.dishes.push(v);save();refreshDL()}});
+function dayTot(i){const p=st.plan[i]||{};return MEALS.reduce((a,[k])=>a+(parseFloat(p[k+"c"])||0),0)}
+function updTot(){
+  let sum=0,n=0;
+  DAYS.forEach((_,i)=>{const t=dayTot(i),el=$("t"+i);if(el)el.textContent=t?"جمع: "+t.toLocaleString("fa-IR")+" کالری":"";if(t){sum+=t;n++}});
+  $("avg").textContent=n?"میانگین روزانه: "+Math.round(sum/n).toLocaleString("fa-IR")+" کالری":"";
+}
+function render(){
+  $("week").innerHTML=DAYS.map((n,i)=>`<section class="day ${i===todayIdx?"today":""}"><h2><span>${n}${i===todayIdx?"<small>امروز</small>":""}</span><span class="tot" id="t${i}"></span></h2>`+
+    MEALS.map(([k,l])=>{const p=st.plan[i]||{};const c=p[k+"c"];return `<div class="row"><label for="i${i}${k}">${l}</label><input id="i${i}${k}" list="${k==="s"?"dls":"dl"}" data-d="${i}" data-m="${k}" value="${esc(p[k]||"")}" placeholder="—" autocomplete="off"><input class="kc" type="number" inputmode="numeric" min="0" data-d="${i}" data-c="${k}" value="${c===undefined?"":esc(c)}" placeholder="کالری" aria-label="کالری ${l} ${n}"></div>`}).join("")+`</section>`).join("");
+  refreshDL();updTot();
+}
+$("week").addEventListener("input",e=>{
+  const t=e.target,d=t.dataset.d;if(d===undefined)return;
+  const p=st.plan[d]=st.plan[d]||{};
+  if(t.dataset.c!==undefined){p[t.dataset.c+"c"]=t.value;updTot()}else p[t.dataset.m]=t.value;
+  save();
+});
+$("week").addEventListener("change",e=>{
+  const t=e.target,d=t.dataset.d;if(d===undefined)return;
+  const p=st.plan[d]=st.plan[d]||{};
+  if(t.dataset.m!==undefined){
+    const m=t.dataset.m,v=t.value.trim();if(!v)return;
+    const isS=m==="s";
+    if(!(isS?saladPool():mainPool()).includes(v))(isS?st.salads:st.dishes).push(v);
+    const c=calOf(v),kc=document.querySelector(`[data-d="${d}"][data-c="${m}"]`);
+    p[m+"c"]=c===null?"":c;if(kc)kc.value=c===null?"":c;
+    updTot();save();refreshDL();
+  }else if(t.dataset.c!==undefined){
+    const v=(p[t.dataset.c]||"").trim(),c=parseFloat(t.value);
+    if(v&&c>=0)st.cal[v]=c;save();
+  }
+});
+$("diet").checked=!!st.diet;
+$("diet").addEventListener("change",()=>{st.diet=$("diet").checked;save()});
 $("sug").addEventListener("click",()=>{
-  const used=new Set();
-  DAYS.forEach((_,i)=>["l","d"].forEach(k=>{const v=((st.plan[i]||{})[k]||"").trim();if(v)used.add(v)}));
-  let avail=pool().filter(d=>!used.has(d));
-  DAYS.forEach((_,i)=>["l","d"].forEach(k=>{
+  const usedM=new Set(),usedS=new Set();
+  DAYS.forEach((_,i)=>{const p=st.plan[i]||{};["l","d"].forEach(k=>{const v=(p[k]||"").trim();if(v)usedM.add(v)});const s=(p.s||"").trim();if(s)usedS.add(s)});
+  const base=()=>st.diet?dietPool():mainPool();
+  let avail=base().filter(d=>!usedM.has(d)),availS=saladPool().filter(d=>!usedS.has(d));
+  const pick=isS=>{
+    let a=isS?availS:avail;
+    if(!a.length)a=isS?saladPool():base();
+    const j=Math.floor(Math.random()*a.length),v=a.splice(j,1)[0];
+    if(isS)availS=a;else avail=a;return v};
+  DAYS.forEach((_,i)=>{
     const p=st.plan[i]=st.plan[i]||{};
-    if((p[k]||"").trim())return;
-    if(!avail.length)avail=pool();
-    const j=Math.floor(Math.random()*avail.length);p[k]=avail.splice(j,1)[0];
-  }));
+    [["l",0],["s",1],["d",0]].forEach(([k,isS])=>{
+      if((p[k]||"").trim())return;
+      const v=pick(!!isS),c=calOf(v);p[k]=v;p[k+"c"]=c===null?"":c;
+    });
+  });
   save();render();
 });
 $("clr").addEventListener("click",()=>{if(confirm("برنامه کل هفته پاک شود؟")){st.plan={};save();render()}});
 const ING={"قورمه‌سبزی":"سبزی قورمه,لوبیا قرمز,گوشت,پیاز,لیمو عمانی,برنج","قیمه":"گوشت,لپه,پیاز,رب گوجه,لیمو عمانی,سیب‌زمینی,برنج","فسنجان":"گردو,رب انار,مرغ,پیاز,برنج","کوکو سبزی":"سبزی کوکو,تخم‌مرغ,گردو,زرشک","عدس‌پلو":"عدس,برنج,خرما,پیاز,کشمش","ماکارونی":"ماکارونی,گوشت چرخ‌کرده,پیاز,رب گوجه","املت":"تخم‌مرغ,گوجه‌فرنگی,پیاز","کشک بادمجان":"بادمجان,کشک,پیاز,سیر,گردو","میرزاقاسمی":"بادمجان,گوجه‌فرنگی,سیر,تخم‌مرغ","آبگوشت":"گوشت گوسفندی,نخود,لوبیا سفید,سیب‌زمینی,گوجه‌فرنگی,پیاز,لیمو عمانی","عدسی":"عدس,پیاز,سیر,سیب‌زمینی","آش رشته":"آش‌رشته,لوبیا,نخود,عدس,سبزی آش,پیاز,کشک","سوپ جو":"جو پرک,هویج,پیاز,مرغ,سبزی","چلوکباب":"گوشت چرخ‌کرده,پیاز,گوجه‌فرنگی,برنج,کره","جوجه‌کباب":"مرغ,زعفران,پیاز,ماست,گوجه‌فرنگی,برنج","زرشک‌پلو با مرغ":"مرغ,زرشک,زعفران,پیاز,برنج","لوبیا‌پلو":"لوبیا سبز,گوشت چرخ‌کرده,رب گوجه,برنج","باقالی‌پلو با مرغ":"باقالی,شوید,مرغ,برنج","کتلت":"گوشت چرخ‌کرده,سیب‌زمینی,پیاز,تخم‌مرغ","شامی":"گوشت چرخ‌کرده,نخود,پیاز,تخم‌مرغ","کوفته":"گوشت چرخ‌کرده,برنج,لپه,سبزی کوفته,تخم‌مرغ,پیاز","خوراک مرغ و سبزیجات":"مرغ,هویج,کدو,سیب‌زمینی,پیاز","ته‌چین":"برنج,ماست,مرغ,تخم‌مرغ,زعفران","دلمه":"فلفل دلمه‌ای,گوشت چرخ‌کرده,برنج,سبزی","خورش بادمجان":"بادمجان,گوشت,گوجه‌فرنگی,پیاز","خورش کرفس":"کرفس,سبزی خورش,گوشت,پیاز,لیمو عمانی","خورش بامیه":"بامیه,گوشت,پیاز,رب گوجه","تن‌ماهی و سالاد":"تن ماهی,کاهو,خیار,گوجه‌فرنگی,لیمو","پیتزا خانگی":"آرد,پنیر پیتزا,سس گوجه,کالباس,قارچ","همبرگر خانگی":"گوشت چرخ‌کرده,نان همبرگر,پیاز,کاهو,گوجه‌فرنگی","نیمرو":"تخم‌مرغ","حلیم بادمجان":"بادمجان,گوشت,سیر,پیاز","اشکنه":"تخم‌مرغ,پیاز,سیر,سبزی,نان","ماست و خیار":"ماست,خیار","سبزی‌پلو با ماهی":"ماهی,سبزی پلویی,برنج","کباب تابه‌ای":"گوشت چرخ‌کرده,پیاز,گوجه‌فرنگی","مرغ سوخاری":"مرغ,آرد سوخاری,تخم‌مرغ","استانبولی‌پلو":"برنج,سیب‌زمینی,گوجه‌فرنگی,گوشت چرخ‌کرده"};
+Object.assign(ING,ING2);
 const norm=s=>s.replace(/[\u200c\s]/g,"");
 const NI={};Object.keys(ING).forEach(k=>NI[norm(k)]=ING[k].split(","));
 st.ing=st.ing||{};st.got=st.got||{};
