@@ -46,6 +46,13 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 .avg{font-weight:600;font-size:.9rem;color:var(--mute);margin:0 0 8px}
 .chk{display:flex;align-items:center;gap:8px;font-size:.9rem;margin:0 0 6px}
 .chk input{width:20px;height:20px;accent-color:var(--accent)}
+.sumrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 10px;text-align:center}
+.sumrow b{display:block;font-size:1.15rem;font-weight:800}
+.sumrow small{color:var(--mute);font-size:.75rem;line-height:1.3;display:block}
+.wk{display:grid;grid-template-columns:62px 1fr 56px;gap:8px;align-items:center;padding:4px 0;font-size:.9rem}
+.wk span:last-child{text-align:left;font-weight:600}
+.mb{height:10px;background:var(--soft);border-radius:5px;overflow:hidden}
+.mb i{display:block;height:100%;background:var(--accent);border-radius:5px}
 </style>
 </head>
 <body>
@@ -61,6 +68,7 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 <div class="avg" id="avg"></div>
 <section id="shop" hidden></section>
 <div id="week"></div>
+<section class="shopbox" id="sum"></section>
 <datalist id="dl"></datalist>
 <datalist id="dls"></datalist>
 <p class="note">هرچه بنویسید خودکار ذخیره می‌شود (فقط روی همین دستگاه). غذاهایی که تایپ می‌کنید به فهرست پیشنهادها اضافه می‌شوند.</p>
@@ -119,10 +127,18 @@ function refreshDL(){
   $("dls").innerHTML=saladPool().map(d=>`<option value="${esc(d)}">`).join("");
 }
 function dayTot(i){const p=st.plan[i]||{};return MEALS.reduce((a,[k])=>a+(parseFloat(p[k+"c"])||0),0)}
+
+function renderSum(sum,n){
+  const tots=DAYS.map((_,i)=>dayTot(i)),mx=Math.max(...tots,1),fa=x=>Math.round(x).toLocaleString("fa-IR");
+  $("sum").innerHTML=`<h2>خلاصه هفته</h2><div class="sumrow"><div><b>${n?fa(sum/n):"—"}</b><small>میانگین کالری روزانه</small></div><div><b>${fa(sum)}</b><small>جمع کالری هفته</small></div><div><b>${fa(n)} از ۷</b><small>روز دارای کالری</small></div></div>`+
+  DAYS.map((d,i)=>`<div class="wk"><span>${d}</span><div class="mb"><i style="width:${tots[i]/mx*100}%"></i></div><span>${tots[i]?fa(tots[i]):"—"}</span></div>`).join("")+
+  (n&&n<7?`<p class="sub" style="margin:8px 0 0">میانگین فقط بر اساس روزهایی است که کالری‌شان را نوشته‌اید.</p>`:"");
+}
 function updTot(){
   let sum=0,n=0;
   DAYS.forEach((_,i)=>{const t=dayTot(i),el=$("t"+i);if(el)el.textContent=t?"جمع: "+t.toLocaleString("fa-IR")+" کالری":"";if(t){sum+=t;n++}});
   $("avg").textContent=n?"میانگین روزانه: "+Math.round(sum/n).toLocaleString("fa-IR")+" کالری":"";
+  renderSum(sum,n);
 }
 function render(){
   $("week").innerHTML=DAYS.map((n,i)=>`<section class="day ${i===todayIdx?"today":""}"><h2><span>${n}${i===todayIdx?"<small>امروز</small>":""}</span><span class="tot" id="t${i}"></span></h2>`+
@@ -199,7 +215,7 @@ $("shop").addEventListener("change",e=>{
 $("shop").addEventListener("click",e=>{if(e.target.id==="unt"){st.got={};save();renderShop()}});
 $("shopBtn").addEventListener("click",()=>{
   const open=$("shop").hidden;
-  $("shop").hidden=!open;$("week").hidden=open;
+  $("shop").hidden=!open;$("week").hidden=open;$("sum").hidden=open;
   $("shopBtn").textContent=open?"برگشت به برنامه":"فهرست خرید";
   if(open)renderShop();
 });
