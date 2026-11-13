@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f8a86">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>برنامه غذایی هفتگی</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f8f7;--card:#fff;--ink:#12383a;--mute:#5d7878;--line:#d5e3e1;--accent:#0f8a86;--accent-ink:#fff;--warm:#e0a21b;--soft:#e4f1ef;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1c1d;--card:#16292a;--ink:#e6f2f0;--mute:#93b0ad;--line:#27403f;--accent:#38c2bc;--accent-ink:#06201f;--warm:#f0b93a;--soft:#1d3536;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Vazirmatn,Tahoma,"Segoe UI",sans-serif;line-height:1.7}
+main{max-width:640px;margin:0 auto;padding:16px 14px 40px}
+h1{font-size:1.25rem;font-weight:800;margin:4px 0 4px}
+.sub{color:var(--mute);font-size:.9rem;margin:0 0 12px}
+.bar{display:flex;gap:8px;margin-bottom:12px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding:6px 0;z-index:2}
+.btn{font:inherit;font-weight:600;background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:9px 14px;cursor:pointer;flex:1}
+.btn.ghost{background:transparent;color:var(--mute);border:1px solid var(--line);font-weight:400;flex:0 0 auto}
+.day{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.day.today{border-color:var(--warm);box-shadow:0 0 0 2px var(--warm) inset}
+.day h2{font-size:1rem;font-weight:800;margin:0 0 6px}
+.day h2 small{color:var(--warm);font-weight:600;margin-right:6px}
+.row{display:grid;grid-template-columns:64px 1fr;align-items:center;gap:8px;margin-top:6px}
+.row label{color:var(--mute);font-size:.9rem}
+input{font:inherit;width:100%;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;min-width:0}
+input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.note{font-size:.8rem;color:var(--mute);margin-top:14px}
+.it{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);cursor:pointer}
+.it:first-of-type{border-top:0}
+.it input{width:20px;height:20px;flex:none;accent-color:var(--accent)}
+.it small{color:var(--mute);margin-right:auto}
+.it.done span{text-decoration:line-through;color:var(--mute)}
+.shopbox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.shopbox h2{font-size:1rem;font-weight:800;margin:0 0 6px}
+.unk{margin-top:8px}
+.unk label{font-size:.9rem;color:var(--mute);display:block}
+</style>
+</head>
+<body>
+<main>
+<h1>برنامه غذایی هفته</h1>
+<p class="sub">یک بار برنامه را بنویسید و تا آخر هفته به «امروز چی بپزم؟» فکر نکنید.</p>
+<div class="bar">
+  <button class="btn" id="sug">پیشنهاد برای جاهای خالی</button>
+  <button class="btn ghost" id="shopBtn">فهرست خرید</button>
+  <button class="btn ghost" id="clr">پاک کردن هفته</button>
+</div>
+<section id="shop" hidden></section>
+<div id="week"></div>
+<datalist id="dl"></datalist>
+<p class="note">هرچه بنویسید خودکار ذخیره می‌شود (فقط روی همین دستگاه). غذاهایی که تایپ می‌کنید به فهرست پیشنهادها اضافه می‌شوند.</p>
+</main>
+<script>
+const DAYS=["شنبه","یک‌شنبه","دوشنبه","سه‌شنبه","چهارشنبه","پنج‌شنبه","جمعه"];
+const MEALS=[["b","صبحانه"],["l","ناهار"],["d","شام"]];
+const STARTER=["قورمه‌سبزی","قیمه","فسنجان","کوکو سبزی","عدس‌پلو","ماکارونی","املت","کشک بادمجان","میرزاقاسمی","آبگوشت","عدسی","آش رشته","سوپ جو","چلوکباب","جوجه‌کباب","زرشک‌پلو با مرغ","لوبیا‌پلو","باقالی‌پلو با مرغ","کتلت","شامی","کوفته","خوراک مرغ و سبزیجات","ته‌چین","دلمه","خورش بادمجان","خورش کرفس","خورش بامیه","تن‌ماهی و سالاد","پیتزا خانگی","همبرگر خانگی","نیمرو","حلیم بادمجان","اشکنه","ماست و خیار","سبزی‌پلو با ماهی","کباب تابه‌ای","مرغ سوخاری","استانبولی‌پلو"];
+const KEY="weekplan-v1";
+let st={plan:{},dishes:[]};
+try{const r=localStorage.getItem(KEY);if(r){const p=JSON.parse(r);if(p&&p.plan)st=p;if(!st.dishes)st.dishes=[]}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
+const todayIdx=(new Date().getDay()+1)%7;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pool=()=>[...new Set([...STARTER,...st.dishes])];
+function refreshDL(){$("dl").innerHTML=pool().map(d=>`<option value="${esc(d)}">`).join("")}
+function render(){
+  $("week").innerHTML=DAYS.map((n,i)=>`<section class="day ${i===todayIdx?"today":""}"><h2>${n}${i===todayIdx?"<small>امروز</small>":""}</h2>`+
+    MEALS.map(([k,l])=>`<div class="row"><label for="i${i}${k}">${l}</label><input id="i${i}${k}" list="dl" data-d="${i}" data-m="${k}" value="${esc((st.plan[i]||{})[k]||"")}" placeholder="—" autocomplete="off"></div>`).join("")+`</section>`).join("");
+  refreshDL();
+}
+$("week").addEventListener("input",e=>{const t=e.target;if(!t.dataset.d)return;(st.plan[t.dataset.d]=st.plan[t.dataset.d]||{})[t.dataset.m]=t.value;save()});
+$("week").addEventListener("change",e=>{const t=e.target,v=t.value.trim();if(t.dataset.d&&v&&!pool().includes(v)){st.dishes.push(v);save();refreshDL()}});
+$("sug").addEventListener("click",()=>{
+  const used=new Set();
+  DAYS.forEach((_,i)=>["l","d"].forEach(k=>{const v=((st.plan[i]||{})[k]||"").trim();if(v)used.add(v)}));
+  let avail=pool().filter(d=>!used.has(d));
+  DAYS.forEach((_,i)=>["l","d"].forEach(k=>{
+    const p=st.plan[i]=st.plan[i]||{};
+    if((p[k]||"").trim())return;
+    if(!avail.length)avail=pool();
+    const j=Math.floor(Math.random()*avail.length);p[k]=avail.splice(j,1)[0];
+  }));
+  save();render();
+});
+$("clr").addEventListener("click",()=>{if(confirm("برنامه کل هفته پاک شود؟")){st.plan={};save();render()}});
+const ING={"قورمه‌سبزی":"سبزی قورمه,لوبیا قرمز,گوشت,پیاز,لیمو عمانی,برنج","قیمه":"گوشت,لپه,پیاز,رب گوجه,لیمو عمانی,سیب‌زمینی,برنج","فسنجان":"گردو,رب انار,مرغ,پیاز,برنج","کوکو سبزی":"سبزی کوکو,تخم‌مرغ,گردو,زرشک","عدس‌پلو":"عدس,برنج,خرما,پیاز,کشمش","ماکارونی":"ماکارونی,گوشت چرخ‌کرده,پیاز,رب گوجه","املت":"تخم‌مرغ,گوجه‌فرنگی,پیاز","کشک بادمجان":"بادمجان,کشک,پیاز,سیر,گردو","میرزاقاسمی":"بادمجان,گوجه‌فرنگی,سیر,تخم‌مرغ","آبگوشت":"گوشت گوسفندی,نخود,لوبیا سفید,سیب‌زمینی,گوجه‌فرنگی,پیاز,لیمو عمانی","عدسی":"عدس,پیاز,سیر,سیب‌زمینی","آش رشته":"آش‌رشته,لوبیا,نخود,عدس,سبزی آش,پیاز,کشک","سوپ جو":"جو پرک,هویج,پیاز,مرغ,سبزی","چلوکباب":"گوشت چرخ‌کرده,پیاز,گوجه‌فرنگی,برنج,کره","جوجه‌کباب":"مرغ,زعفران,پیاز,ماست,گوجه‌فرنگی,برنج","زرشک‌پلو با مرغ":"مرغ,زرشک,زعفران,پیاز,برنج","لوبیا‌پلو":"لوبیا سبز,گوشت چرخ‌کرده,رب گوجه,برنج","باقالی‌پلو با مرغ":"باقالی,شوید,مرغ,برنج","کتلت":"گوشت چرخ‌کرده,سیب‌زمینی,پیاز,تخم‌مرغ","شامی":"گوشت چرخ‌کرده,نخود,پیاز,تخم‌مرغ","کوفته":"گوشت چرخ‌کرده,برنج,لپه,سبزی کوفته,تخم‌مرغ,پیاز","خوراک مرغ و سبزیجات":"مرغ,هویج,کدو,سیب‌زمینی,پیاز","ته‌چین":"برنج,ماست,مرغ,تخم‌مرغ,زعفران","دلمه":"فلفل دلمه‌ای,گوشت چرخ‌کرده,برنج,سبزی","خورش بادمجان":"بادمجان,گوشت,گوجه‌فرنگی,پیاز","خورش کرفس":"کرفس,سبزی خورش,گوشت,پیاز,لیمو عمانی","خورش بامیه":"بامیه,گوشت,پیاز,رب گوجه","تن‌ماهی و سالاد":"تن ماهی,کاهو,خیار,گوجه‌فرنگی,لیمو","پیتزا خانگی":"آرد,پنیر پیتزا,سس گوجه,کالباس,قارچ","همبرگر خانگی":"گوشت چرخ‌کرده,نان همبرگر,پیاز,کاهو,گوجه‌فرنگی","نیمرو":"تخم‌مرغ","حلیم بادمجان":"بادمجان,گوشت,سیر,پیاز","اشکنه":"تخم‌مرغ,پیاز,سیر,سبزی,نان","ماست و خیار":"ماست,خیار","سبزی‌پلو با ماهی":"ماهی,سبزی پلویی,برنج","کباب تابه‌ای":"گوشت چرخ‌کرده,پیاز,گوجه‌فرنگی","مرغ سوخاری":"مرغ,آرد سوخاری,تخم‌مرغ","استانبولی‌پلو":"برنج,سیب‌زمینی,گوجه‌فرنگی,گوشت چرخ‌کرده"};
+const norm=s=>s.replace(/[\u200c\s]/g,"");
+const NI={};Object.keys(ING).forEach(k=>NI[norm(k)]=ING[k].split(","));
+st.ing=st.ing||{};st.got=st.got||{};
+const getIng=d=>st.ing[d]||NI[norm(d)]||null;
+function renderShop(){
+  const dishes=[];
+  DAYS.forEach((_,i)=>MEALS.forEach(([k])=>{const v=((st.plan[i]||{})[k]||"").trim();if(v)dishes.push(v)}));
+  if(!dishes.length){$("shop").innerHTML='<div class="shopbox"><p class="sub" style="margin:0">هنوز غذایی برای این هفته ننوشته‌اید. اول برنامه را بنویسید یا «پیشنهاد برای جاهای خالی» را بزنید.</p></div>';return}
+  const cnt={},unk=[];
+  dishes.forEach(d=>{const g=getIng(d);if(!g){if(!unk.includes(d))unk.push(d);return}[...new Set(g)].forEach(x=>cnt[x]=(cnt[x]||0)+1)});
+  const names=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]||a.localeCompare(b,"fa"));
+  let h='<div class="shopbox"><h2>مواد لازم این هفته</h2>';
+  h+=names.length?names.map(n=>`<label class="it ${st.got[n]?"done":""}"><input type="checkbox" data-g="${esc(n)}" ${st.got[n]?"checked":""}><span>${esc(n)}</span>${cnt[n]>1?`<small>برای ${cnt[n].toLocaleString("fa-IR")} غذا</small>`:""}</label>`).join(""):'<p class="sub" style="margin:0">مواد غذاهای نوشته‌شده را وارد کنید.</p>';
+  h+='<button class="btn ghost" id="unt" style="margin-top:10px">برداشتن همه‌ی تیک‌ها</button></div>';
+  if(unk.length)h+='<div class="shopbox"><h2>مواد این غذاها را خودتان بنویسید</h2><p class="sub" style="margin:0">با ویرگول جدا کنید؛ یک بار بنویسید، برای همیشه یادش می‌ماند.</p>'+unk.map(d=>`<div class="unk"><label>${esc(d)}</label><input data-u="${esc(d)}" placeholder="مثلاً: برنج, مرغ, پیاز"></div>`).join("")+'</div>';
+  $("shop").innerHTML=h;
+}
+$("shop").addEventListener("change",e=>{
+  const t=e.target;
+  if(t.dataset.g!==undefined){st.got[t.dataset.g]=t.checked;save();t.closest(".it").classList.toggle("done",t.checked)}
+  else if(t.dataset.u!==undefined){const a=t.value.split(/[,،\n]/).map(s=>s.trim()).filter(Boolean);if(a.length){st.ing[t.dataset.u]=a;save();renderShop()}}
+});
+$("shop").addEventListener("click",e=>{if(e.target.id==="unt"){st.got={};save();renderShop()}});
+$("shopBtn").addEventListener("click",()=>{
+  const open=$("shop").hidden;
+  $("shop").hidden=!open;$("week").hidden=open;
+  $("shopBtn").textContent=open?"برگشت به برنامه":"فهرست خرید";
+  if(open)renderShop();
+});
+const _render=render;
+render=function(){_render();if(!$("shop").hidden)renderShop()};
+render();
+if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})})}
+</script>
+</body>
+</html>
